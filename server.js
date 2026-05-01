@@ -31,7 +31,9 @@ app.post("/chat", async (req, res) => {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data?.error?.message || "OpenRouter error");
-    res.json(data);
+    res.json({
+  reply: data.choices?.[0]?.message?.content || "No reply"
+});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
