@@ -54,36 +54,10 @@ app.post("/chat", async (req, res) => {
         console.log(`Success with model: ${m}`);
         return res.json({ reply });
       }
+
+      console.warn(`Model ${m} returned no reply, trying next...`);
     } catch (err) {
       console.warn(`Model ${m} failed:`, err.message);
-    }
-  }
-
-  return res.status(500).json({ error: "All models failed. Please try again later." });
-});
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://redking-ai.github.io",
-          "X-Title": "Shinzi AI"
-        },
-        body: JSON.stringify({ model, messages })
-      });
-
-      const data = await response.json();
-      const reply = data?.choices?.[0]?.message?.content;
-
-      if (response.ok && reply) {
-        console.log(`Success with model: ${model}`);
-        return res.json({ reply });
-      }
-
-      console.warn(`Model ${model} returned no reply, trying next...`);
-    } catch (err) {
-      console.warn(`Model ${model} failed:`, err.message);
     }
   }
 
