@@ -12,61 +12,52 @@ app.use((req, res, next) => {
   next();
 });
 
-// OpenRouter endpoint
-app.post("/chat", async (req, res) => {
-  try {
-    const { messages } = req.body;
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENROUTER_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://redking-ai.github.io",
-        "X-Title": "Shinzi AI"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/llama-3.1-8b-instruct:free",
-        messages
-      })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data?.error?.message || "OpenRouter error");
-    res.json({
-  reply: data.choices?.[0]?.message?.content || "No reply"
-});
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+const MODELS = [
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemma-3-27b-it:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+  "poolside/laguna-m.1:free",
+  "poolside/laguna-xs.2:free",
+  "z-ai/glm-4.5-air:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "liquid/lfm-2.5-1.2b-thinking:free"
+];
 
-// Hugging Face endpoint
-app.post("/hf", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3",
-      {
+app.post("/chat", async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "Invalid messages format" });
+  }
+
+  for (const model of MODELS) {
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
+          "Authorization": `Bearer ${process.env.OPENROUTER_KEY}`,
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.HF_TOKEN}`
+          "HTTP-Referer": "https://redking-ai.github.io",
+          "X-Title": "Shinzi AI"
         },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 500,
-            temperature: 0.7,
-            return_full_text: false
-          }
-        })
+        body: JSON.stringify({ model, messages })
+      });
+
+      const data = await response.json();
+      const reply = data?.choices?.[0]?.message?.content;
+
+      if (response.ok && reply) {
+        console.log(`Success with model: ${model}`);
+        return res.json({ reply });
       }
-    );
-    const data = await response.json();
-    if (!response.ok) throw new Error("HF error");
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+
+      console.warn(`Model ${model} returned no reply, trying next...`);
+    } catch (err) {
+      console.warn(`Model ${model} failed:`, err.message);
+    }
   }
+
+  return res.status(500).json({ error: "All models failed. Please try again later." });
 });
 
 app.listen(process.env.PORT || 3000, () => {
