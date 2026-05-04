@@ -13,15 +13,16 @@ app.use((req, res, next) => {
 });
 
 const MODELS = [
+  "openrouter/owl-alpha",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
   "poolside/laguna-m.1:free",
   "poolside/laguna-xs.2:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemma-3-27b-it:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "minimax/minimax-m2.5:free",
+  "openai/gpt-oss-120b:free",
+  "openai/gpt-oss-20b:free",
   "z-ai/glm-4.5-air:free",
-  "liquid/lfm-2.5-1.2b-thinking:free",
-  "meta-llama/llama-3.2-3b-instruct:free",
-  "google/gemma-4-26b-a4b-it:free",
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+  "qwen/qwen3-coder:free"
 ];
 
 const SYSTEM_PROMPT = {
