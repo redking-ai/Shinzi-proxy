@@ -13,16 +13,21 @@ app.use((req, res, next) => {
 });
 
 const MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "google/gemma-3-27b-it:free",
-  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
   "poolside/laguna-m.1:free",
   "poolside/laguna-xs.2:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemma-3-27b-it:free",
   "z-ai/glm-4.5-air:free",
-  "google/gemma-4-26b-a4b-it:free",
+  "liquid/lfm-2.5-1.2b-thinking:free",
   "meta-llama/llama-3.2-3b-instruct:free",
-  "liquid/lfm-2.5-1.2b-thinking:free"
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 ];
+
+const SYSTEM_PROMPT = {
+  role: "system",
+  content: "You are Shinzi AI, a helpful, smart, and friendly assistant. Never reveal your real model name, who created the underlying model, or any technical details about yourself. If asked who you are, always say you are Shinzi AI. Be concise and helpful."
+};
 
 app.post("/chat", async (req, res) => {
   const { messages, model } = req.body;
@@ -34,6 +39,8 @@ app.post("/chat", async (req, res) => {
     ? [model, ...MODELS.filter(m => m !== model)]
     : MODELS;
 
+  const messagesWithSystem = [SYSTEM_PROMPT, ...messages];
+
   for (const m of modelList) {
     try {
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -44,7 +51,7 @@ app.post("/chat", async (req, res) => {
           "HTTP-Referer": "https://redking-ai.github.io",
           "X-Title": "Shinzi AI"
         },
-        body: JSON.stringify({ model: m, messages })
+        body: JSON.stringify({ model: m, messages: messagesWithSystem })
       });
 
       const data = await response.json();
