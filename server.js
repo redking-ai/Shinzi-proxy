@@ -44,19 +44,20 @@ app.post("/chat", async (req, res) => {
     const data = await response.json();
     const reply = data?.choices?.[0]?.message?.content;
 
-    // If successful, send the reply
+    // If successful, send the reply normally
     if (response.ok && reply) {
       console.log(`Success! EXACT model ${targetModel} replied.`);
       return res.json({ reply });
     } else {
-      // STRICT MODE: If the specific model fails, TELL the user. Do not secretly swap.
+      // THE FIX: Send the error text disguised as a normal successful AI reply!
       console.error(`Model ${targetModel} failed or is busy. Details:`, data);
-      return res.status(503).json({ error: `The model you selected is currently busy or offline. Please try again or select a different model from the menu.` });
+      return res.json({ reply: "⚠️ The model you selected is currently busy or offline. Please try again or select a different model from the menu." });
     }
 
   } catch (err) {
     console.error(`Connection error targeting model ${targetModel}:`, err.message);
-    return res.status(500).json({ error: "Server connection failed. Please check your internet or try again later." });
+    // Send network errors as a chat reply too, so the frontend doesn't crash
+    return res.json({ reply: "⚠️ Server connection failed. Please check your internet or try again later." });
   }
 });
 
