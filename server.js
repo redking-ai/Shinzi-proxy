@@ -52,10 +52,9 @@ app.post("/chat", async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────
-// 2. SHINZI MUSIC SEARCH ROUTE (FLIPPED WATERFALL)
+// 2. SHINZI MUSIC SEARCH ROUTE (RE-ORDERED WATERFALL)
 // ──────────────────────────────────────────────────────────
 
-// A list of solid public Invidious instances to bounce between
 const INVIDIOUS_INSTANCES = [
   "https://inv.nadeko.net",
   "https://invidious.nerdvpn.de",
@@ -66,16 +65,38 @@ app.get("/music/search", async (req, res) => {
   const query = req.query.q;
   if (!query) return res.status(400).json({ error: "No search query provided" });
 
-  console.log(`\n🎧 New Music Search: "${query}"`);
+  console.log(`\n🎧 New Music Search Request: "${query}"`);
 
-  // --- TIER 1: yt-search (Scraper - FREE & UNLIMITED) ---
+  // --- TIER 1: Official YouTube API (DEFAULT PREFERENCE) ---
   try {
-    console.log("-> Trying Tier 1: yt-search Scraper");
+    if (process.env.YOUTUBE_API_KEY) {
+      console.log("-> Trying Tier 1: Official API (Default)");
+      const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=20&key=${process.env.YOUTUBE_API_KEY}`;
+      const response = await fetch(ytUrl);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.items && data.items.length > 0) {
+          console.log("-> Success! Fetched from Official API.");
+          return res.json(data);
+        }
+      } else {
+        console.warn(`-> Tier 1 Warning: Status ${response.status}. Key may be out of quota.`);
+      }
+    } else {
+      console.log("-> Tier 1 Skipped: YOUTUBE_API_KEY environment variable missing.");
+    }
+  } catch (err) {
+    console.error("-> Tier 1 Error:", err.message);
+  }
+
+  // --- TIER 2: yt-search (Scraper Backup) ---
+  try {
+    console.log("-> Trying Tier 2: yt-search Scraper (Backup)");
     const r = await yts(query);
-    
+
     if (r && r.videos.length > 0) {
-      console.log("-> Success! Used Scraper.");
-      // Map the data to trick the frontend into thinking this is official YouTube API data
+      console.log("-> Success! Recovered via Scraper.");
       const mappedData = {
         items: r.videos.slice(0, 20).map(v => ({
           id: { videoId: v.videoId },
@@ -89,21 +110,20 @@ app.get("/music/search", async (req, res) => {
       return res.json(mappedData);
     }
   } catch (err) {
-    console.error("-> Tier 1 Error:", err.message);
+    console.error("-> Tier 2 Error:", err.message);
   }
 
-  // --- TIER 2: Public Invidious API (FREE BACKUP) ---
+  // --- TIER 3: Public Invidious API (Last Ditch Fallback) ---
   try {
-    console.log("-> Trying Tier 2: Invidious API");
-    // Pick a random instance so we don't spam one server
+    console.log("-> Trying Tier 3: Invidious API");
     const instance = INVIDIOUS_INSTANCES[Math.floor(Math.random() * INVIDIOUS_INSTANCES.length)];
     const invUrl = `${instance}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-    
+
     const response = await fetch(invUrl);
     if (response.ok) {
       const data = await response.json();
-      console.log("-> Success! Used Invidious.");
-      
+      console.log("-> Success! Recovered via Invidious.");
+
       const mappedData = {
         items: data.slice(0, 20).map(v => ({
           id: { videoId: v.videoId },
@@ -117,30 +137,11 @@ app.get("/music/search", async (req, res) => {
       return res.json(mappedData);
     }
   } catch (err) {
-    console.error("-> Tier 2 Error:", err.message);
-  }
-
-  // --- TIER 3: Official YouTube API (EMERGENCY QUOTA ONLY) ---
-  try {
-    if (process.env.YOUTUBE_API_KEY) {
-      console.log("-> Trying Tier 3: Official API (Emergency Backup)");
-      const ytUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&maxResults=20&key=${process.env.YOUTUBE_API_KEY}`;
-      const response = await fetch(ytUrl);
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.items && data.items.length > 0) {
-          console.log("-> Success! Used Official API.");
-          return res.json(data);
-        }
-      }
-    }
-  } catch (err) {
     console.error("-> Tier 3 Error:", err.message);
   }
 
-  // If literally everything fails
-  console.error("-> ALL TIERS FAILED.");
+  // Final exit if all methods fail
+  console.error("-> CRITICAL FAIL: All backend tiers exhausted.");
   return res.status(500).json({ error: "All backend search services are currently busy. Try again soon." });
 });
 
@@ -148,5 +149,5 @@ app.get("/music/search", async (req, res) => {
 // SERVER START
 // ──────────────────────────────────────────────────────────
 app.listen(process.env.PORT || 3000, () => {
-  console.log("Shinzi Ecosystem Backend running! Handles AI Chat + Multi-Tier Music Search.");
+  console.log("Shinzi Ecosystem Backend running! Defaulting to Official YouTube Sync -> Scraper -> Invidious.");
 });
