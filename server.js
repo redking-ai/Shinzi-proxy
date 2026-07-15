@@ -106,7 +106,7 @@ app.get("/music/search", async (req, res) => {
           id: { videoId: v.id },
           snippet: {
             title: v.title,
-            channelTitle: v.channelTitle || v.author, // Depends on the specific object structure
+            channelTitle: v.channelTitle || v.author, 
             thumbnails: { high: { url: v.thumbnail?.thumbnails?.[0]?.url || `https://img.youtube.com/vi/${v.id}/0.jpg` } }
           }
         }))
@@ -207,3 +207,6 @@ app.get("/music/search", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("Shinzi Ecosystem Backend running! 5-Tier Waterfall Active.");
 });
+
+// Vercel Serverless Export Map
+module.exports = app;
