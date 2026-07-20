@@ -173,20 +173,48 @@ app.get("/music/search", async (req, res) => {
 });
 
 // ──────────────────────────────────────────────────────────
-// 3. THE AD-FREE AUDIO EXTRACTOR
+// 3. THE AD-FREE AUDIO EXTRACTOR (WITH COBALT FALLBACK)
 // ──────────────────────────────────────────────────────────
 app.get("/music/stream", async (req, res) => {
   const videoId = req.query.id;
   if (!videoId) return res.status(400).json({ error: "Need a video ID" });
 
+  const ytUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
   try {
-    console.log(`🎵 Extracting Ad-Free Audio for: ${videoId}`);
-    const stream = await play.stream(`https://www.youtube.com/watch?v=${videoId}`);
+    console.log(`🎵 Extracting Ad-Free Audio via play-dl for: ${videoId}`);
+    const stream = await play.stream(ytUrl);
     
     return res.json({ audioUrl: stream.url });
   } catch (error) {
-    console.error("Stream extraction failed:", error.message);
-    return res.status(500).json({ error: "Failed to extract audio." });
+    console.log("⚠️ play-dl blocked (Vercel IP issue). Falling back to Cobalt API...");
+    
+    try {
+      // Fallback to the Cobalt API
+      const cobaltRes = await fetch("https://api.cobalt.tools/api/json", {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          url: ytUrl,
+          isAudioOnly: true
+        })
+      });
+
+      const cobaltData = await cobaltRes.json();
+
+      if (cobaltData && cobaltData.url) {
+        console.log("✅ Cobalt fallback successful!");
+        return res.json({ audioUrl: cobaltData.url });
+      } else {
+        throw new Error("Cobalt API returned no URL");
+      }
+    } catch (fallbackError) {
+      console.error("🚨 All extraction methods failed:", fallbackError.message);
+      return res.status(500).json({ error: "Failed to extract audio." });
+    }
   }
 });
 
